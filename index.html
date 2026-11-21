@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Game 3 – Silent Line-Up Challenge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Caveat+Brush&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{colors:{orange:{100:"#fff1c9",500:"#e8384f",600:"#c9243d"},sky:{100:"#ffe1ea",500:"#f2708f",700:"#c9456a"},amber:{100:"#fff1c9",200:"#ffe9a0",300:"#ffd966",400:"#ffd966"},emerald:{200:"#cfeab0",400:"#7cc56a",500:"#5fae4f"}}}}}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+:root{--ink:#6b1a35;--bg:#fff6f8;--card:#ffffff;--sun:#ffc93c;--coral:#ff6b57;--mint:#1fb596;--sky:#2f9bff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background-color:var(--bg);background-image:linear-gradient(90deg,rgba(242,112,143,.22) 50%,transparent 50%),linear-gradient(rgba(242,112,143,.22) 50%,transparent 50%);background-size:56px 56px;color:var(--ink);font-family:"Baloo 2","Trebuchet MS",ui-rounded,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+.card{background:#fffaf0;border-radius:32px;border:3px solid #fff;outline:2px dashed rgba(232,56,79,.35);outline-offset:-8px;box-shadow:0 6px 0 rgba(232,56,79,.22)}
+h1,h2{font-family:"Caveat Brush","Baloo 2",cursive!important;font-weight:400!important;color:#e8384f;line-height:1.05}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{transform-origin:200px 100px;animation:spin 40s linear infinite}
+.btn{border-radius:22px;font-weight:800;padding:.7rem 1.4rem;min-height:56px;box-shadow:0 5px 0 rgba(29,35,64,.25);transition:transform .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(29,35,64,.25)}
+@keyframes pop{0%{transform:scale(.3) rotate(-8deg);opacity:0}60%{transform:scale(1.08) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes flash{0%,100%{opacity:1}50%{opacity:.35}}
+.pop{animation:pop .7s cubic-bezier(.2,.9,.3,1.2)}
+.bob{animation:bob 1.2s ease-in-out infinite}
+.flash{animation:flash .8s infinite}
+.conf{position:fixed;top:-5vh;width:12px;height:18px;animation:fall linear infinite;z-index:50;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.pop,.bob,.flash,.conf{animation:none}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+const KEY="silentlineup_v2";
+const CH=[
+["🎂","Birthday Order","Arrange yourselves by birthday, from January 1 to December 31.","Jan 1 → Dec 31","Medium"],
+["📏","Height Order","Arrange yourselves by height, from shortest to tallest.","Shortest → Tallest","Easy"],
+["🎈","Age Order","Arrange yourselves by age, from youngest to oldest.","Youngest → Oldest","Medium"],
+["🔤","Alphabetical Order","Arrange yourselves by first name, from A to Z.","A → Z","Medium"],
+["👟","Shoe Size","Arrange yourselves by shoe size, from smallest to largest.","Smallest → Largest","Medium"],
+["⏰","Wake-Up Time","Arrange yourselves by usual wake-up time, from earliest to latest.","Earliest → Latest","Hard"],
+["🌙","Bedtime","Arrange yourselves by usual bedtime, from earliest to latest.","Earliest → Latest","Hard"],
+["🔋","Phone Battery","Arrange yourselves by phone battery level, from lowest to highest.","Lowest → Highest","Medium",1],
+["🚌","Travel Distance","Arrange yourselves by how far you traveled today, from closest to farthest.","Closest → Farthest","Hard"],
+["🌍","Countries Visited","Arrange yourselves by number of countries visited, from fewest to most.","Fewest → Most","Hard"],
+["👨‍👩‍👧‍👦","Siblings Count","Arrange yourselves by number of siblings, from fewest to most.","Fewest → Most","Easy"],
+["💇","Hair Length","Arrange yourselves by hair length, from shortest to longest.","Shortest → Longest","Easy"],
+["🏷️","Last Name Order","Arrange yourselves by last name, from A to Z.","A → Z","Medium"],
+["🏙️","Years in Current City","Arrange yourselves by years lived in your current city, from fewest to most.","Fewest → Most","Hard"],
+["📱","Screen Time","Arrange yourselves by yesterday’s screen time, from lowest to highest.","Lowest → Highest","Medium",1]
+].map((c,i)=>({id:i,icon:c[0],title:c[1],text:c[2],dir:c[3],diff:c[4],phone:!!c[5]}));
+const DC={Easy:"bg-emerald-200",Medium:"bg-amber-200",Hard:"bg-rose-200"};
+const TC=["bg-rose-500","bg-sky-500","bg-emerald-500","bg-amber-500","bg-violet-500","bg-pink-500","bg-teal-500","bg-orange-500"];
+const TN=["Red","Blue","Green","Gold","Purple","Pink","Teal","Orange"];
+const ORDER=["welcome","setup","how","bank","play","board","winner"];
+const LABEL={welcome:"Welcome",setup:"Setup",how:"How to Play",bank:"Challenges",play:"Play",board:"Leaderboard",winner:"Winner"};
+const plan=(total,size)=>{let k=Math.min(8,Math.max(1,Math.round(total/size)));while(k>1&&Math.floor(total/k)<4)k--;const b=Math.floor(total/k),r=total%k;return Array.from({length:k},(_,i)=>b+(i>=k-r?1:0));};
+const defNames=k=>Array.from({length:k},(_,i)=>"Team "+TN[i]);
+const DEF={screen:"welcome",total:24,size:8,rounds:5,secs:120,names:defNames(3),used:[],cur:null,results:{},hidden:false};
+const load=()=>{try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&v.names)return {...DEF,...v};}catch(e){}return DEF;};
+const totals=(s,k)=>{const t=Array(k).fill(0);Object.values(s.results).forEach(o=>o.forEach((ti,p)=>{t[ti]+=k-p;}));return t;};
+
+function NumIn({value,min,max,onChange,disabled,label}){
+  const [t,setT]=useState(String(value));
+  useEffect(()=>setT(String(value)),[value]);
+  const commit=()=>{let n=parseInt(t,10);if(isNaN(n))n=value;n=Math.min(max,Math.max(min,n));setT(String(n));if(n!==value)onChange(n);};
+  return <input type="text" inputMode="numeric" pattern="[0-9]*" value={t} disabled={disabled} aria-label={label} onFocus={e=>e.target.select()} onChange={e=>setT(e.target.value.replace(/\D/g,""))} onBlur={commit} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} className="w-24 text-center text-4xl font-extrabold rounded-2xl border-2 border-rose-200 bg-white py-1 outline-none focus:border-rose-500 disabled:opacity-50"/>;
+}
+
+function Stepper({label,value,min,max,step=1,onChange,disabled,suffix=""}){
+  return <div className="card p-4 flex items-center justify-between gap-3">
+    <div className="text-xl font-bold">{label}</div>
+    <div className="flex items-center gap-3">
+      <button disabled={disabled||value<=min} onClick={()=>onChange(value-step)} className="btn bg-amber-300 w-14 text-3xl" aria-label={"Decrease "+label}>−</button>
+      <NumIn value={value} min={min} max={max} onChange={onChange} disabled={disabled} label={label}/>
+      <button disabled={disabled||value>=max} onClick={()=>onChange(value+step)} className="btn bg-amber-300 w-14 text-3xl" aria-label={"Increase "+label}>+</button>
+    </div></div>;
+}
+
+function Park(){
+  const P=[["#a58be0","#d96b8a"],["#d96b8a","#f2a0b5"],["#a58be0","#8a5a6e"],["#f2a0b5","#d96b8a"],["#a58be0","#d96b8a"]];
+  return <svg viewBox="0 0 400 230" className="w-full max-w-2xl" role="img" aria-label="Friends lining up in a park">
+    <ellipse cx="200" cy="235" rx="270" ry="80" fill="#a9d98a"/>
+    <g className="spin">
+      <circle cx="200" cy="100" r="78" fill="none" stroke="#f2708f" strokeWidth="5"/>
+      {[0,1,2,3,4,5,6,7].map(i=>{const a=i*Math.PI/4,x=200+Math.cos(a)*78,y=100+Math.sin(a)*78;return <g key={i}><line x1="200" y1="100" x2={x} y2={y} stroke="#f7a3b8" strokeWidth="2"/><rect x={x-9} y={y-7} width="18" height="14" rx="4" fill={i%2?"#f7a3b8":"#e8384f"}/></g>;})}
+    </g>
+    <circle cx="200" cy="100" r="8" fill="#e8384f"/>
+    {[120,250].map(x=><g key={x}><rect x={x} y="138" width="34" height="28" fill="#e6dcdc"/><path d={"M"+(x-6)+" 140 L"+(x+17)+" 120 L"+(x+40)+" 140Z"} fill="#e8384f"/></g>)}
+    {P.map((c,i)=><g key={i} className="bob" style={{animationDelay:i*.2+"s"}}><rect x={78+i*56} y="196" width="16" height="14" fill="#8a3a55"/><rect x={74+i*56} y="174" width="24" height="24" rx="3" fill={c[0]}/><rect x={76+i*56} y="152" width="20" height="22" fill="#f3d3b0"/><rect x={75+i*56} y="148" width="22" height="9" fill="#4a2b2b"/><circle cx={82+i*56} cy="165" r="1.8" fill="#4a2b2b"/><circle cx={90+i*56} cy="165" r="1.8" fill="#4a2b2b"/></g>)}
+  </svg>;
+}
+
+function Welcome({go}){
+  return <div className="text-center flex flex-col items-center gap-5 py-4">
+    <Park/>
+    <div className="text-3xl md:text-4xl font-extrabold text-orange-600">GAME 3</div>
+    <h1 className="text-5xl md:text-8xl font-extrabold leading-none">SILENT LINE-UP CHALLENGE</h1>
+    <p className="text-2xl md:text-4xl font-bold text-sky-700">Can Your Team Communicate Without Speaking?</p>
+    <div className="grid grid-cols-3 gap-3 w-full max-w-2xl">
+      {[["👥","Participants","20–30"],["🔁","Rounds","5"],["⏱️","Duration","15–20 min"]].map(([i,a,b])=>
+        <div key={a} className="card p-3"><div className="text-3xl">{i}</div><div className="text-lg font-bold opacity-70">{a}</div><div className="text-2xl font-extrabold">{b}</div></div>)}
+    </div>
+    <button onClick={()=>go("setup")} className="btn bg-orange-500 text-white text-4xl md:text-5xl px-12 py-5">LET’S PLAY!</button>
+  </div>;
+}
+
+function Setup({s,up}){
+  const started=s.used.length>0;
+  const sizes=plan(s.total,s.size);
+  const change=p=>{const n={...s,...p};const k=plan(n.total,n.size).length;const reset=started&&k!==s.names.length;if(reset&&!confirm("This changes the number of teams and clears all scores. Continue?"))return;up({...p,...(reset?{used:[],cur:null,results:{}}:{}),names:Array.from({length:k},(_,i)=>s.names[i]||defNames(k)[i])});};
+  return <div className="max-w-5xl mx-auto flex flex-col gap-4">
+    <h2 className="text-4xl md:text-5xl font-extrabold">Game Setup</h2>
+    
+    <div className="grid md:grid-cols-2 gap-3">
+      <Stepper label="Participants" value={s.total} min={6} max={60} onChange={v=>change({total:v})}/>
+      <Stepper label="Rounds" value={s.rounds} min={1} max={15} onChange={v=>up({rounds:v})}/>
+      <Stepper label="Seconds per round" value={s.secs} min={10} max={600} step={15} onChange={v=>up({secs:v})}/>
+      <Stepper label="Team size" value={s.size} min={2} max={15} onChange={v=>change({size:v})}/>
+    </div>
+    <div className="card p-4">
+      <div className="text-2xl font-extrabold mb-1">{sizes.length} teams: {sizes.join(", ")} players</div>
+      <div className="mb-2"></div>
+      <div className="grid md:grid-cols-2 gap-3">
+        {sizes.map((n,i)=><label key={i} className={"flex items-center gap-3 rounded-2xl p-3 text-white "+TC[i]}>
+          <span className="text-3xl font-extrabold w-14 text-center bg-white/25 rounded-xl">{n}</span>
+          <input value={s.names[i]||""} maxLength={24} onChange={e=>{const a=[...s.names];a[i]=e.target.value;up({names:a});}} className="flex-1 min-w-0 bg-white/20 rounded-xl px-3 py-2 text-2xl font-bold outline-none focus:bg-white/30 placeholder-white/70" placeholder="Team name" aria-label={"Name of team "+(i+1)}/>
+        </label>)}
+      </div></div>
+  </div>;
+}
+
+function Demo(){
+  const [a,setA]=useState([3,1,4,2,5]);
+  useEffect(()=>{const t=setInterval(()=>setA(p=>{const q=[...p];for(let i=0;i<q.length-1;i++)if(q[i]>q[i+1]){[q[i],q[i+1]]=[q[i+1],q[i]];return q;}return [4,2,5,1,3];}),1000);return ()=>clearInterval(t);},[]);
+  const col=["bg-rose-400","bg-sky-400","bg-emerald-400","bg-amber-400","bg-violet-400"];
+  return <div className="relative h-32 md:h-40 w-full" aria-label="Animated demonstration of people swapping places in a line">
+    {[1,2,3,4,5].map(v=><div key={v} className={"absolute top-0 w-[17%] h-full rounded-3xl text-center flex flex-col items-center justify-center text-white font-extrabold text-3xl "+col[v-1]} style={{left:a.indexOf(v)*20.5+"%",transition:"left .8s ease"}}><span className="text-5xl">🙋</span>{v}</div>)}
+  </div>;
+}
+
+function How(){
+  const st=["Stand with your team.","Host reveals a challenge.","Line up in order, using gestures only.","Done? Everyone raises their hands.","Host checks. Wrong? Rearrange!"];
+  return <div className="max-w-5xl mx-auto flex flex-col gap-4">
+    <h2 className="text-4xl md:text-5xl font-extrabold">How to Play</h2>
+    <div className="card p-4 bg-rose-500 text-white text-center text-3xl md:text-5xl font-extrabold">🤫 NO TALKING. ONLY BODY LANGUAGE!</div>
+    <div className="grid md:grid-cols-2 gap-3">{st.map((t,i)=><div key={i} className="card p-4 flex gap-3 items-start text-xl md:text-2xl font-bold"><span className="shrink-0 w-11 h-11 rounded-full bg-amber-300 flex items-center justify-center text-2xl font-extrabold">{i+1}</span>{t}</div>)}</div>
+    <div className="card p-4"><Demo/></div>
+  </div>;
+}
+
+function Bank({s,up,go}){
+  return <div className="max-w-6xl mx-auto flex flex-col gap-4">
+    <h2 className="text-4xl md:text-5xl font-extrabold">Challenge Bank</h2>
+    
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{CH.map(c=>{const used=s.used.includes(c.id);return <div key={c.id} className={"card p-4 flex flex-col gap-2 "+(used?"opacity-50":"")}>
+      <div className="flex items-center gap-3"><span className="text-5xl">{c.icon}</span><div><div className="text-2xl font-extrabold leading-tight">{c.id+1}. {c.title}</div><span className={"text-sm font-bold rounded-full px-2 "+DC[c.diff]}>{c.diff}</span></div></div>
+      <div className="text-lg font-bold text-sky-700">{c.dir}</div>
+      {c.phone&&<div className="text-sm font-bold text-rose-600">📵 Check phones after the round</div>}
+      <button disabled={used||s.cur!==null||s.used.length>=s.rounds} onClick={()=>{up({cur:c.id,used:[...s.used,c.id],hidden:false});go("play");}} className="btn bg-sky-500 text-white mt-auto">{used?"Already used":"Play this one"}</button>
+    </div>;})}</div>
+  </div>;
+}
+
+function Timer({secs}){
+  const [left,setLeft]=useState(secs),[run,setRun]=useState(false);
+  const end=useRef(0);
+  useEffect(()=>{if(!run)return;const t=setInterval(()=>{const l=Math.max(0,Math.ceil((end.current-Date.now())/1000));setLeft(l);if(l<=0){setRun(false);}},200);return ()=>clearInterval(t);},[run]);
+  const start=()=>{end.current=Date.now()+left*1000;setRun(true);};
+  const add=()=>{if(run)end.current+=30000;setLeft(l=>l+30);};
+  const m=String(Math.floor(left/60)).padStart(2,"0"),sc=String(left%60).padStart(2,"0");
+  const over=left===0,low=left<=10&&left>0;
+  return <div className="card p-4 text-center">
+    <div className={"font-extrabold leading-none text-8xl md:text-[10rem] tabular-nums "+(over?"text-rose-600 flash":low?"text-orange-500":"")} role="timer">{m}:{sc}</div>
+    {over&&<div className="text-5xl md:text-7xl font-extrabold text-rose-600 pop">TIME’S UP!</div>}
+    <div className="flex flex-wrap gap-3 justify-center mt-3">
+      {!run&&left===secs&&<button onClick={start} className="btn bg-emerald-500 text-white text-2xl">▶ Start Timer</button>}
+      {run&&<button onClick={()=>setRun(false)} className="btn bg-amber-400 text-2xl">⏸ Pause</button>}
+      {!run&&left!==secs&&!over&&<button onClick={start} className="btn bg-emerald-500 text-white text-2xl">▶ Resume</button>}
+      <button onClick={add} className="btn bg-sky-500 text-white text-2xl">+30 Seconds</button>
+      <button onClick={()=>{setRun(false);setLeft(secs);}} className="btn bg-slate-200 text-2xl">↺ Reset</button>
+    </div></div>;
+}
+
+function Play({s,up,go}){
+  const k=s.names.length,round=s.used.length;
+  const ord=s.results[round]||[];
+  const setOrd=o=>up({results:{...s.results,[round]:o}});
+  const draw=()=>{const pool=CH.filter(c=>!s.used.includes(c.id));if(!pool.length)return;const c=pool[Math.floor(Math.random()*pool.length)];up({cur:c.id,used:[...s.used,c.id],hidden:false});};
+  const done=round>=s.rounds;
+  if(s.cur===null)return <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-5 py-6">
+    <div className="text-4xl md:text-6xl font-extrabold">{done?"All rounds played!":"ROUND "+(round+1)+" OF "+s.rounds}</div>
+    {done?<button onClick={()=>go("board")} className="btn bg-orange-500 text-white text-4xl px-10 py-5">See the Leaderboard</button>:<>
+      <div className="text-9xl bob" aria-hidden="true">🎲</div>
+      <button onClick={draw} className="btn bg-orange-500 text-white text-4xl md:text-6xl px-8 md:px-14 py-6">DRAW RANDOM CHALLENGE</button>
+      <label className="card p-3 text-xl font-bold flex flex-wrap items-center justify-center gap-3">Or choose manually:
+        <select defaultValue="" onChange={e=>{if(e.target.value!=="")up({cur:+e.target.value,used:[...s.used,+e.target.value],hidden:false});}} className="rounded-xl border-2 border-slate-300 bg-white p-2 text-xl">
+          <option value="" disabled>Pick a challenge</option>
+          {CH.filter(c=>!s.used.includes(c.id)).map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
+        </select></label>
+      </>}
+  </div>;
+  const c=CH[s.cur];
+  return <div className="max-w-6xl mx-auto flex flex-col gap-4">
+    <div key={s.cur} className="card p-5 md:p-8 text-center pop bg-gradient-to-br from-amber-100 to-orange-100">
+      <div className="text-2xl md:text-3xl font-extrabold text-orange-600">ROUND {round} OF {s.rounds}</div>
+      {s.hidden?<div className="py-10 text-7xl md:text-9xl">🙈<div className="text-3xl font-bold">Challenge hidden</div></div>:<>
+        <div className="text-7xl md:text-9xl my-1">{c.icon}</div>
+        <div className="text-5xl md:text-7xl font-extrabold">{c.title.toUpperCase()}</div>
+        <div className="text-2xl md:text-4xl font-bold mt-2 max-w-4xl mx-auto">“{c.text}”</div>
+        <div className="mt-3 inline-block rounded-full bg-sky-500 text-white text-2xl md:text-3xl font-extrabold px-6 py-1">{c.dir}</div>
+        <span className={"ml-2 rounded-full px-3 py-1 font-bold "+DC[c.diff]}>{c.diff}</span>
+        {c.phone&&<div className="mt-2 text-lg font-bold text-rose-600">📵 Phones may only be checked after the round, for verification.</div>}</>}
+    </div>
+    <Timer key={round} secs={s.secs}/>
+    <div className="card p-4">
+      <div className="text-2xl font-extrabold">Finishing order</div>
+      <div className="mb-2"></div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {s.names.map((n,i)=>{const p=ord.indexOf(i);return <button key={i} onClick={()=>setOrd(p>=0?ord.filter(x=>x!==i):[...ord,i])} className={"btn text-white text-2xl text-left flex items-center justify-between "+TC[i]+(p<0?" opacity-70":"")}>
+          <span className="truncate">{n}</span><span className="bg-white/30 rounded-xl px-2 text-xl shrink-0 ml-2">{p>=0?(p+1)+(["st","nd","rd"][p]||"th")+" · +"+(k-p):"0 pts"}</span></button>;})}
+      </div></div>
+    <div className="flex flex-wrap gap-3 justify-center">
+      <button onClick={()=>up({hidden:!s.hidden})} className="btn bg-slate-200 text-xl">{s.hidden?"👁 Show Question":"🙈 Hide Question"}</button>
+      <button onClick={()=>{if(round>=s.rounds){up({cur:null});go("board");}else up({cur:null});}} className="btn bg-orange-500 text-white text-2xl">{round>=s.rounds?"Finish & See Results":"Next Round →"}</button>
+    </div>
+  </div>;
+}
+
+function Board({s,go,restart}){
+  const k=s.names.length,t=totals(s,k);
+  const rank=t.map((v,i)=>({i,v})).sort((a,b)=>b.v-a.v||a.i-b.i);
+  const rounds=Math.max(s.used.length,1);
+  return <div className="max-w-5xl mx-auto flex flex-col gap-4">
+    <h2 className="text-4xl md:text-5xl font-extrabold">Leaderboard</h2>
+    <div className="card p-3 overflow-x-auto"><table className="w-full text-xl md:text-2xl font-bold text-center">
+      <thead><tr className="text-lg"><th className="text-left p-2">Rank</th><th className="text-left p-2">Team</th>{Array.from({length:rounds},(_,r)=><th key={r} className="p-2">R{r+1}</th>)}<th className="p-2">Total</th></tr></thead>
+      <tbody>{rank.map((x,pos)=><tr key={x.i} className="border-t-2 border-slate-100">
+        <td className="p-2 text-left text-3xl">{["🥇","🥈","🥉"][pos]||pos+1}</td>
+        <td className="p-2 text-left"><span className={"inline-block w-4 h-4 rounded-full mr-2 "+TC[x.i]}></span>{s.names[x.i]}</td>
+        {Array.from({length:rounds},(_,r)=>{const p=(s.results[r+1]||[]).indexOf(x.i);return <td key={r} className="p-2">{p>=0?k-p:0}</td>;})}
+        <td className="p-2 text-3xl font-extrabold">{x.v}</td></tr>)}</tbody></table></div>
+    <div className="flex flex-wrap gap-3 justify-center">
+      <button onClick={()=>go("winner")} className="btn bg-orange-500 text-white text-2xl">🏆 Announce the Winner</button>
+      <button onClick={restart} className="btn bg-slate-200 text-xl">Restart Game</button></div>
+  </div>;
+}
+
+function Winner({s,restart}){
+  const k=s.names.length,t=totals(s,k),mx=Math.max(...t);
+  const w=t.map((v,i)=>v===mx?s.names[i]:null).filter(Boolean);
+  const cols=["#ff6b57","#ffc93c","#1fb596","#2f9bff","#a855f7","#ec4899"];
+  return <div className="text-center flex flex-col items-center gap-5 py-6">
+    {Array.from({length:70},(_,i)=><span key={i} className="conf" style={{left:(i*37%100)+"%",background:cols[i%6],animationDuration:(3+(i%5))+"s",animationDelay:(i%10)*.3+"s"}}></span>)}
+    <div className="text-8xl bob" aria-hidden="true">🏆</div>
+    <h2 className="text-4xl md:text-7xl font-extrabold pop">CONGRATULATIONS, {mx===0?"EVERYONE":w.join(" & ").toUpperCase()}!</h2>
+    <p className="text-3xl md:text-5xl font-bold text-orange-600">“You are the Silent Line-Up Champions!”</p>
+    <div className="text-2xl font-bold">{mx} points</div>
+    <button onClick={restart} className="btn bg-slate-200 text-xl">Restart Game</button>
+  </div>;
+}
+
+function App(){
+  const [s,setS]=useState(load);
+  const up=p=>setS(x=>({...x,...p}));
+  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}},[s]);
+  const live=s.used.length>0;
+  useEffect(()=>{const h=e=>{if(live&&s.screen!=="winner"){e.preventDefault();e.returnValue="";}};window.addEventListener("beforeunload",h);return ()=>window.removeEventListener("beforeunload",h);},[live,s.screen]);
+  const go=screen=>up({screen});
+  const restart=()=>{if(confirm("Restart the game? All scores will be erased.")){setS({...DEF,screen:"setup",names:s.names,total:s.total,size:s.size,rounds:s.rounds,secs:s.secs});}};
+  const i=ORDER.indexOf(s.screen);
+  const fs=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}};
+  const props={s,up,go,restart};
+  const V={welcome:Welcome,setup:Setup,how:How,bank:Bank,play:Play,board:Board,winner:Winner}[s.screen];
+  return <div className="min-h-screen flex flex-col">
+    <header className="flex items-center justify-between gap-2 p-3 md:px-6 bg-white/70">
+      <button onClick={()=>go("welcome")} className="btn bg-amber-300 text-lg min-h-[48px]">🏠 Home</button>
+      <div className="font-extrabold text-xl md:text-2xl text-center">{LABEL[s.screen]}</div>
+      <div className="flex gap-2">
+        {live&&<button onClick={()=>go("play")} className="btn bg-emerald-400 text-lg min-h-[48px]">Live</button>}
+        <button onClick={fs} className="btn bg-slate-200 text-lg min-h-[48px]" aria-label="Toggle full screen">⛶</button></div>
+    </header>
+    <main className="flex-1 p-4 md:p-8"><V {...props}/></main>
+    <footer className="flex items-center justify-between gap-3 p-3 md:px-6 bg-white/70">
+      <button disabled={i===0} onClick={()=>go(ORDER[i-1])} className="btn bg-sky-500 text-white text-xl">← Previous</button>
+      <div className="flex gap-2" aria-hidden="true">{ORDER.map((o,j)=><span key={o} className={"w-3 h-3 rounded-full "+(j===i?"bg-orange-500":"bg-slate-300")}></span>)}</div>
+      <button disabled={i===ORDER.length-1} onClick={()=>go(ORDER[i+1])} className="btn bg-sky-500 text-white text-xl">Next →</button>
+    </footer>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
